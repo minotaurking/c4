@@ -335,6 +335,8 @@ int main(int argc, char **argv)
   int fd, bt, ty, poolsz, *idmain;
   int *pc, *sp, *bp, a, cycle; // vm registers
   int i, *t; // temps
+  int *code_base;
+  int *data_base;
 
   --argc; ++argv;
   if (argc > 0 && **argv == '-' && (*argv)[1] == 's') { src = 1; --argc; ++argv; }
@@ -352,6 +354,9 @@ int main(int argc, char **argv)
   memset(sym,  0, poolsz);
   memset(e,    0, poolsz);
   memset(data, 0, poolsz);
+
+  code_base = e;
+  data_base = data;
 
   p = "char else enum if int return sizeof while "
       "open read close printf malloc free memset memcmp exit void main";
@@ -461,7 +466,11 @@ int main(int argc, char **argv)
   }
 
   if (!(pc = (int *)idmain[Val])) { printf("main() not defined\n"); return -1; }
-  if (src) return 0;
+  if (src) 
+  {
+    output(*argv, code_base, data_base, pc - code_base);
+    return 0;
+  }
 
   // setup stack
   bp = sp = (int *)((int)sp + poolsz);
@@ -525,4 +534,33 @@ int main(int argc, char **argv)
     else if (i == EXIT) { printf("exit(%d) cycle = %d\n", *sp, cycle); return *sp; }
     else { printf("unknown instruction = %d! cycle = %d\n", i, cycle); return -1; }
   }
+}
+
+void output(char *src, int *code, int *data, int entry) {
+  char file[128];
+  int size;
+
+  size = 256 * 1024;
+  // Save code
+  strcpy(file, src);
+  strcat(file, ".code");
+  FILE *f = fopen(file, "wb");
+  fwrite(code, size, 1, f);
+  fclose(f);
+
+  // Save data
+  strcpy(file, src);
+  strcat(file, ".data");
+  f = fopen(file, "wb");
+  fwrite(data, size, 1, f);
+  fclose(f);
+
+  // Save address
+  strcpy(file, src);
+  strcat(file, ".addr");
+  f = fopen(file, "wb");
+  fwrite(&code, sizeof(int*), 1, f);
+  fwrite(&data, sizeof(int*), 1, f);
+  fwrite(&entry, sizeof(int), 1, f);
+  fclose(f);
 }
