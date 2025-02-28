@@ -468,7 +468,7 @@ int main(int argc, char **argv)
   if (!(pc = (int *)idmain[Val])) { printf("main() not defined\n"); return -1; }
   if (src) 
   {
-    output(*argv, code_base, data_base, pc - code_base);
+    output(*argv, code_base, data_base, (char*)e - (char*)code_base + sizeof(int), data - (char*)data_base, pc - code_base);
     return 0;
   }
 
@@ -536,23 +536,20 @@ int main(int argc, char **argv)
   }
 }
 
-void output(char *src, int *code, int *data, int entry) {
+void output(char *src, int *code, int *data, int code_size, int data_size, int entry) {
   char file[128];
-  int size;
-
-  size = 256 * 1024;
   // Save code
   strcpy(file, src);
   strcat(file, ".code");
   FILE *f = fopen(file, "wb");
-  fwrite(code, size, 1, f);
+  fwrite(code, code_size, 1, f);
   fclose(f);
 
   // Save data
   strcpy(file, src);
   strcat(file, ".data");
   f = fopen(file, "wb");
-  fwrite(data, size, 1, f);
+  fwrite(data, data_size, 1, f);
   fclose(f);
 
   // Save address
@@ -561,6 +558,8 @@ void output(char *src, int *code, int *data, int entry) {
   f = fopen(file, "wb");
   fwrite(&code, sizeof(int*), 1, f);
   fwrite(&data, sizeof(int*), 1, f);
+  fwrite(&code_size, sizeof(int), 1, f);
+  fwrite(&data_size, sizeof(int), 1, f);
   fwrite(&entry, sizeof(int), 1, f);
   fclose(f);
 }
