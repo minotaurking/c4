@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
     // target address
     int code_base, data_base;
     char *target_code;
-    char *cur_ins;
+    char *cur_ins, *jmp_entry_ins;
     int target_entry;
     int code_mem_size;
     // Map c4 instruction adress to target code address
@@ -161,10 +161,28 @@ int main(int argc, char **argv) {
     // Vectors, nop now
     gen_nop(&cur_ins);
     gen_nop(&cur_ins);
-    // Set sp
+    // Set sp and bp
     gen_movi(&cur_ins, sp, 0x8000);
     gen_slli(&cur_ins, sp, sp, 4);
-    // Jump to entry, but the entry address is unknown, will be updated later
+    gen_mov(&cur_ins, bp, sp);
+    // Jump to entry point, but the target_entry is unknown, will be updated later
+    jmp_entry_ins = cur_ins;
+    gen_movi(&cur_ins, r, target_entry);
+    gen_bl(&cur_ins, r);
+    // Save uart address to a
+    gen_movi(&cur_ins, a, 0x8000);
+    gen_slli(&cur_ins, a, a, 4);
+    // Output end
+    gen_movi(&cur_ins, r, 'e');
+    gen_sti(&cur_ins, r, a, 0);
+    gen_movi(&cur_ins, r, 'n');
+    gen_sti(&cur_ins, r, a, 0);
+    gen_movi(&cur_ins, r, 'd');
+    gen_sti(&cur_ins, r, a, 0);
+    gen_movi(&cur_ins, r, '\n');
+    gen_sti(&cur_ins, r, a, 0);
+
+    // Dead loop
     gen_bi(&cur_ins, 0);
 
     for (int i = 1; i < base_addr[2] / sizeof(uint64_t); i++) {
@@ -319,12 +337,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    // End of code, add a deadloop
-    gen_bi(&cur_ins, 0);
-
     // Update the jump to entry instruction
-    cur_ins = target_code + 0x14;
-    gen_bi(&cur_ins, target_entry - 0x14);
+    gen_movi(&jmp_entry_ins, r, target_entry);
 
     // open "code.bin" for write
     int fd;
