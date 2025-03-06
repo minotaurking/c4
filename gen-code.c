@@ -51,6 +51,10 @@ void gen_add(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x1, rd, rs1, rs2);
 }
 
+void gen_addi(char **code, int rd, int rs, int immd) {
+    gen_ins(code, 0x2, rd, rs, immd);
+}
+
 void gen_sub(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x11, rd, rs1, rs2);
 }
@@ -192,8 +196,8 @@ int main(int argc, char **argv) {
         address_map[i] = cur_ins - target_code;
         switch (code[i]) {
             case LEA:
-                // a = *(bp + *pc);
-                gen_ldri(&cur_ins, a, bp, code[++i]);
+                // a = (int)(bp + *pc);
+                gen_addi(&cur_ins, a, bp, code[++i] * 4);
                 break;
             case IMM:
                 // a = *pc;
