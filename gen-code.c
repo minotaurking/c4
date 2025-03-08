@@ -27,16 +27,24 @@ void gen_movi(char **code, int rd, int immd) {
     gen_ins(code, 0x62, rd, immd % 256, immd / 256);
 }
 
-void gen_ldr(char **code, int rd, int rs1, int rs2) {
+void gen_ld32(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x41, rd, rs1, rs2);
 }
 
-void gen_ldri(char **code, int rd, int rs, int immd) {
+void gen_ld32i(char **code, int rd, int rs, int immd) {
     gen_ins(code, 0x42, rd, rs, immd);
 }
 
-void gen_sti(char **code, int rd, int rs1, int immd) {
+void gen_ld8i(char **code, int rd, int rs, int immd) {
+    gen_ins(code, 0x44, rd, rs, immd);
+}
+
+void gen_st32i(char **code, int rd, int rs1, int immd) {
     gen_ins(code, 0x52, rd, rs1, immd);
+}
+
+void gen_st8i(char **code, int rd, int rs1, int immd) {
+    gen_ins(code, 0x54, rd, rs1, immd);
 }
 
 void gen_push(char **code, int rd) {
@@ -59,12 +67,20 @@ void gen_sub(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x11, rd, rs1, rs2);
 }
 
+void gen_mul(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x21, rd, rs1, rs2);
+}
+
 void gen_b(char **code, int rd) {
     gen_ins(code, 0x91, rd, 0, 0);
 }
 
 void gen_bi(char **code, int immd) {
-    gen_ins(code, 0x92, immd % 256, (immd & 0xFF00) / 0x100, immd / 0x10000);
+    gen_ins(code, 0x92, immd % 256, immd / 256, 0);
+}
+
+void gen_bz(char **code, int rd) {
+    gen_ins(code, 0x93, rd, 0, 0);
 }
 
 void gen_bl(char **code, int rd) {
@@ -79,10 +95,15 @@ void gen_slli(char **code, int rd, int rs1, int immd) {
     gen_ins(code, 0x72, rd, rs1, immd);
 }
 
+void gen_eq(char **code, int rd, int rs) {
+    gen_ins(code, 0xb1, rd, rs, 0);
+}
+
 void unimplemented(int ins) {
     printf("%8.4s unimplemented", &"LEA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,"
         "OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,"
         "OPEN,READ,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT,"[ins * 5]);
+    printf("\n");
     exit(1);
 }
 
@@ -114,11 +135,16 @@ int main(int argc, char **argv) {
     // target address
     int code_base, data_base;
     char *target_code;
-    char *cur_ins, *jmp_entry_ins;
-    int target_entry;
+    char *cur_ins;
     int code_mem_size;
     // Map c4 instruction adress to target code address
     int *address_map;
+    // jump(JMP, BZ...) instruction maybe jump to a target which address is larger than itself,
+    // the target instruction maybe not compiled, so its address in target machine
+    // is unknown.
+    uint64_t reloc[1024];
+    int reloc_index;
+    int ins_index;
 
     if (argc < 2) {
         printf("usage: %s prefix\n", argv[0]);
@@ -151,13 +177,14 @@ int main(int argc, char **argv) {
     a = 4;
     r = 5;
 
+    reloc_index = 0;
+
     // round up to 4k alignment
     code_mem_size = (base_addr[2] + 0x1000) & -0x1000;
     target_code = malloc(code_mem_size);
     cur_ins = target_code;
     code_base = 0;
     data_base = code_mem_size;
-    target_entry = 0;
     address_map = malloc(base_addr[2]);
 
     // Reset handler, jump to 0xc
@@ -166,33 +193,32 @@ int main(int argc, char **argv) {
     gen_nop(&cur_ins);
     gen_nop(&cur_ins);
     // Set sp and bp
-    gen_movi(&cur_ins, sp, 0x8000);
-    gen_slli(&cur_ins, sp, sp, 4);
+    gen_movi(&cur_ins, sp, 0x800);
+    gen_slli(&cur_ins, sp, sp, 8);
     gen_mov(&cur_ins, bp, sp);
     // Jump to entry point, but the target_entry is unknown, will be updated later
-    jmp_entry_ins = cur_ins;
-    gen_movi(&cur_ins, r, target_entry);
+    // jmp_entry_ins = cur_ins;
+    reloc[reloc_index++] = (uint64_t)cur_ins;
+    reloc[reloc_index++] = base_addr[4];
+    gen_movi(&cur_ins, r, 0);
     gen_bl(&cur_ins, r);
     // Save uart address to a
-    gen_movi(&cur_ins, a, 0x8000);
-    gen_slli(&cur_ins, a, a, 4);
+    gen_movi(&cur_ins, a, 0x800);
+    gen_slli(&cur_ins, a, a, 8);
     // Output end
     gen_movi(&cur_ins, r, 'e');
-    gen_sti(&cur_ins, r, a, 0);
+    gen_st32i(&cur_ins, r, a, 0);
     gen_movi(&cur_ins, r, 'n');
-    gen_sti(&cur_ins, r, a, 0);
+    gen_st32i(&cur_ins, r, a, 0);
     gen_movi(&cur_ins, r, 'd');
-    gen_sti(&cur_ins, r, a, 0);
+    gen_st32i(&cur_ins, r, a, 0);
     gen_movi(&cur_ins, r, '\n');
-    gen_sti(&cur_ins, r, a, 0);
+    gen_st32i(&cur_ins, r, a, 0);
 
     // Dead loop
     gen_bi(&cur_ins, 0);
 
     for (int i = 1; i < base_addr[2] / sizeof(uint64_t); i++) {
-        if (i == base_addr[4]) {
-            target_entry = cur_ins - target_code;
-        }
         address_map[i] = cur_ins - target_code;
         switch (code[i]) {
             case LEA:
@@ -208,14 +234,26 @@ int main(int argc, char **argv) {
                 gen_movi(&cur_ins, a, code[i]);
                 break;
             case JMP:
-                unimplemented(code[i]);
+                // pc = (int*)*pc
+                gen_movi(&cur_ins, r, address_map[(code[++i] - base_addr[0]) / sizeof(int64_t)]);
+                gen_b(&cur_ins, r);
                 break;
             case JSR:
+                // *--sp = (int)(pc + 1); pc = (int *)*pc;
                 gen_movi(&cur_ins, r, address_map[(code[++i] - base_addr[0]) / sizeof(int64_t)]);
                 gen_bl(&cur_ins, r);
                 break;
             case BZ:
-                unimplemented(code[i]);
+                gen_movi(&cur_ins, r, 0);
+                gen_eq(&cur_ins, a, r);
+                ins_index = (code[++i] - base_addr[0]) / sizeof(int64_t);
+                if (ins_index > i) {
+                    // Jump further
+                    reloc[reloc_index++] = (uint64_t)cur_ins;
+                    reloc[reloc_index++] = ins_index;
+                }
+                gen_movi(&cur_ins, r, address_map[ins_index]);
+                gen_bz(&cur_ins, r);
                 break;
             case BNZ:
                 unimplemented(code[i]);
@@ -243,17 +281,18 @@ int main(int argc, char **argv) {
                 break;
             case LI:
                 // a = *(int*)a;
-                gen_ldr(&cur_ins, a, a, 0);
+                gen_ld32i(&cur_ins, a, a, 0);
                 break;
             case LC:
-                unimplemented(code[i]);
+                gen_ld8i(&cur_ins, a, a, 0);
                 break;
             case SI:
                 gen_pop(&cur_ins, r);
-                gen_sti(&cur_ins, a, r, 0);
+                gen_st32i(&cur_ins, a, r, 0);
                 break;
             case SC:
-                unimplemented(code[i]);
+                gen_pop(&cur_ins, r);
+                gen_st8i(&cur_ins, a, r, 0);
                 break;
             case PSH:
                 // *--sp = a
@@ -298,10 +337,14 @@ int main(int argc, char **argv) {
                 gen_add(&cur_ins, a, a, r);
                 break;
             case SUB:
-                unimplemented(code[i]);
+                // a = *sp++ - a
+                gen_pop(&cur_ins, r);
+                gen_sub(&cur_ins, a, r, a);
                 break;
             case MUL:
-                unimplemented(code[i]);
+                // a = *sp++ * a
+                gen_pop(&cur_ins, r);
+                gen_mul(&cur_ins, a, r, a);
                 break;
             case DIV:
                 unimplemented(code[i]);
@@ -341,8 +384,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Update the jump to entry instruction
-    gen_movi(&jmp_entry_ins, r, target_entry);
+    for (int i = 0; i < reloc_index; i += 2) {
+        gen_movi((void*)&reloc[i], r, address_map[reloc[i + 1]]);
+    }
 
     // open "code.bin" for write
     int fd;
