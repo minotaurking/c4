@@ -55,6 +55,30 @@ void gen_pop(char **code, int rd) {
     gen_ins(code, 0xa2, rd, 0, 0);
 }
 
+void gen_eq(char **code, int rd, int rs) {
+    gen_ins(code, 0xb1, rd, rs, 0);
+}
+
+void gen_ne(char **code, int rd, int rs) {
+    gen_ins(code, 0xb3, rd, rs, 0);
+}
+
+void gen_lt(char **code, int rd, int rs) {
+    gen_ins(code, 0xb7, rd, rs, 0);
+}
+
+void gen_gt(char **code, int rd, int rs) {
+    gen_ins(code, 0xb5, rd, rs, 0);
+}
+
+void gen_le(char **code, int rd, int rs) {
+    gen_ins(code, 0xbb, rd, rs, 0);
+}
+
+void gen_ge(char **code, int rd, int rs) {
+    gen_ins(code, 0xb9, rd, rs, 0);
+}
+
 void gen_add(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x1, rd, rs1, rs2);
 }
@@ -95,8 +119,8 @@ void gen_slli(char **code, int rd, int rs1, int immd) {
     gen_ins(code, 0x72, rd, rs1, immd);
 }
 
-void gen_eq(char **code, int rd, int rs) {
-    gen_ins(code, 0xb1, rd, rs, 0);
+void gen_sprr(char **code, int rd) {
+    gen_ins(code, 0xd1, rd, 0, 0);
 }
 
 void unimplemented(int ins) {
@@ -235,7 +259,13 @@ int main(int argc, char **argv) {
                 break;
             case JMP:
                 // pc = (int*)*pc
-                gen_movi(&cur_ins, r, address_map[(code[++i] - base_addr[0]) / sizeof(int64_t)]);
+                ins_index = (code[++i] - base_addr[0]) / sizeof(int64_t);
+                if (ins_index > i) {
+                    // Jump further
+                    reloc[reloc_index++] = (uint64_t)cur_ins;
+                    reloc[reloc_index++] = ins_index;
+                }
+                gen_movi(&cur_ins, r, address_map[ins_index]);
                 gen_b(&cur_ins, r);
                 break;
             case JSR:
@@ -245,7 +275,7 @@ int main(int argc, char **argv) {
                 break;
             case BZ:
                 gen_movi(&cur_ins, r, 0);
-                gen_eq(&cur_ins, a, r);
+                gen_ne(&cur_ins, a, r);
                 ins_index = (code[++i] - base_addr[0]) / sizeof(int64_t);
                 if (ins_index > i) {
                     // Jump further
@@ -308,22 +338,40 @@ int main(int argc, char **argv) {
                 unimplemented(code[i]);
                 break;
             case EQ:
-                unimplemented(code[i]);
+                // a = *sp++ == a
+                gen_pop(&cur_ins, r);
+                gen_eq(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case NE:
-                unimplemented(code[i]);
+                // a = *sp++ != a
+                gen_pop(&cur_ins, r);
+                gen_ne(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case LT:
-                unimplemented(code[i]);
+                // a = *sp++ < a
+                gen_pop(&cur_ins, r);
+                gen_lt(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case GT:
-                unimplemented(code[i]);
+                // a = *sp++ > a
+                gen_pop(&cur_ins, r);
+                gen_gt(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case LE:
-                unimplemented(code[i]);
+                // a = *sp++ <= a
+                gen_pop(&cur_ins, r);
+                gen_le(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case GE:
-                unimplemented(code[i]);
+                // a = *sp++ >= a
+                gen_pop(&cur_ins, r);
+                gen_ge(&cur_ins, r, a);
+                gen_sprr(&cur_ins, a);
                 break;
             case SHL:
                 unimplemented(code[i]);
