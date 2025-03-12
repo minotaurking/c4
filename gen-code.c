@@ -24,7 +24,8 @@ void gen_mov(char **code, int rd, int rs) {
 }
 
 void gen_movi(char **code, int rd, int immd) {
-    gen_ins(code, 0x62, rd, immd % 256, immd / 256);
+    uint16_t d = (uint16_t)immd;
+    gen_ins(code, 0x62, rd, d % 256, d / 256);
 }
 
 void gen_ld32(char **code, int rd, int rs1, int rs2) {
@@ -95,12 +96,21 @@ void gen_mul(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x21, rd, rs1, rs2);
 }
 
+void gen_div(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x31, rd, rs1, rs2);
+}
+
+void gen_mod(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x33, rd, rs1, rs2);
+}
+
 void gen_b(char **code, int rd) {
     gen_ins(code, 0x91, rd, 0, 0);
 }
 
 void gen_bi(char **code, int immd) {
-    gen_ins(code, 0x92, immd % 256, immd / 256, 0);
+    uint16_t d = (uint16_t)immd;
+    gen_ins(code, 0x92, d % 256, d / 256, 0);
 }
 
 void gen_bz(char **code, int rd) {
@@ -395,10 +405,14 @@ int main(int argc, char **argv) {
                 gen_mul(&cur_ins, a, r, a);
                 break;
             case DIV:
-                unimplemented(code[i]);
+                // a = *sp++ / a
+                gen_pop(&cur_ins, r);
+                gen_div(&cur_ins, a, r, a);
                 break;
             case MOD:
-                unimplemented(code[i]);
+                // a = *sp++ % a
+                gen_pop(&cur_ins, r);
+                gen_mod(&cur_ins, a, r, a);
                 break;
             case OPEN:
                 unimplemented(code[i]);
@@ -410,6 +424,7 @@ int main(int argc, char **argv) {
                 unimplemented(code[i]);
                 break;
             case PRTF:
+                unimplemented(code[i]);
                 break;
             case MALC:
                 unimplemented(code[i]);
