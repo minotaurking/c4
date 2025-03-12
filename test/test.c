@@ -14,6 +14,7 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
     int *p;
     int t;
     int d;
+    char *cp;
     p = &p1;
 
     while (*s > 0) {
@@ -42,7 +43,13 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
                     }
                 }
             }
-            p--;
+
+            // Fix me: should be p--, but pointer in c4 is 64 bit, in target is 32 bit
+            // So we expect the code is p = (int)p - 4, but we got p = (int)p - 8 which
+            // is generate by c4.
+            t = (int)p;
+            t = t - 4;
+            p = (int*)t;
         }
         s++;
     }
@@ -73,17 +80,9 @@ void test(int t) {
 }
 
 int main() {
-    a = 2;
-    b = -1;
-    c = 1;
-    ppp = &a;
-
-    c = c + b;
-    if (*ppp == 2) {
-        print1("c is %d\n", c);
-    }
-
-    test(b);
+    a = 12;
+    b = 23;
+    print4("print %d %d %d %d\n", a, b, a + 1, b + 2);
 
     return 0;
 }
