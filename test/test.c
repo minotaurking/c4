@@ -77,6 +77,12 @@ void print3(char *s, int p1, int p2, int p3) {
     print4(s, p1, p2, p3, 0);
 }
 
+void assert(char *file, int line, char *expr, int cond) {
+    if (cond == 0) {
+        print3("assert failed!\n%s:%d\n%s\n", file, line, expr);
+    }
+}
+
 void test(int t) {
     int *pp;
     pp = &t;
@@ -89,6 +95,9 @@ int main() {
     a = 12;
     b = 23;
     print4("print %d %d %s %d\n", a, b, "abc", b + 2);
+
+    ASSERT(b == 23);
+    ASSERT(a == 13);
 
     return 0;
 }
