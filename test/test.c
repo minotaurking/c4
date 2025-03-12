@@ -42,6 +42,12 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
                         t = t / 10;
                     }
                 }
+            } else if (*s == 's') {
+                cp = *p;
+                while (*cp != 0) {
+                    putchar(*cp);
+                    cp++;
+                }
             }
 
             // Fix me: should be p--, but pointer in c4 is 64 bit, in target is 32 bit
@@ -82,7 +88,7 @@ void test(int t) {
 int main() {
     a = 12;
     b = 23;
-    print4("print %d %d %d %d\n", a, b, a + 1, b + 2);
+    print4("print %d %d %s %d\n", a, b, "abc", b + 2);
 
     return 0;
 }
