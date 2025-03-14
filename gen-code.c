@@ -10,6 +10,14 @@ enum { LEA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,
     OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,
     OPEN,READ,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT };
 
+int sp, bp, pc, a, r, t;
+
+// Target data area
+int64_t *data;
+// Target data base
+int data_base;
+int cur_data_index;
+
 void gen_ins(char **code, int op, int rd, int rs1, int rs2) {
     char* cur = *code;
     *cur++ = op;
@@ -19,13 +27,28 @@ void gen_ins(char **code, int op, int rd, int rs1, int rs2) {
     *code = cur;
 }
 
-void gen_mov(char **code, int rd, int rs) {
-    gen_ins(code, 0x61, rd, rs, 0);
+void gen_slli(char **code, int rd, int rs1, int immd) {
+    gen_ins(code, 0x72, rd, rs1, immd);
 }
 
-void gen_movi(char **code, int rd, int immd) {
-    uint16_t d = (uint16_t)immd;
-    gen_ins(code, 0x62, rd, d % 256, d / 256);
+void gen_add(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x1, rd, rs1, rs2);
+}
+
+void gen_addi(char **code, int rd, int rs, int immd) {
+    gen_ins(code, 0x2, rd, rs, immd);
+}
+
+void gen_sub(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x11, rd, rs1, rs2);
+}
+
+void gen_mul(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x21, rd, rs1, rs2);
+}
+
+void gen_div(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x31, rd, rs1, rs2);
 }
 
 void gen_ld32(char **code, int rd, int rs1, int rs2) {
@@ -34,6 +57,26 @@ void gen_ld32(char **code, int rd, int rs1, int rs2) {
 
 void gen_ld32i(char **code, int rd, int rs, int immd) {
     gen_ins(code, 0x42, rd, rs, immd);
+}
+
+void gen_mov(char **code, int rd, int rs) {
+    gen_ins(code, 0x61, rd, rs, 0);
+}
+
+void gen_movi(char **code, int rd, int immd) {
+    int limit = 32768;
+    int cur_data_addr = 0;
+    if (immd >= limit) {
+        data[cur_data_index] = immd;
+        cur_data_addr = data_base + cur_data_index * sizeof(int64_t);
+        cur_data_index++;
+        gen_movi(code, rd, cur_data_addr / limit);
+        gen_slli(code, rd, rd, 15);
+        gen_movi(code, t, cur_data_addr % limit);
+        gen_ld32(code, rd, rd, t);
+    } else {
+        gen_ins(code, 0x62, rd, immd % 256, immd / 256);
+    }
 }
 
 void gen_ld8i(char **code, int rd, int rs, int immd) {
@@ -80,26 +123,6 @@ void gen_ge(char **code, int rd, int rs) {
     gen_ins(code, 0xb9, rd, rs, 0);
 }
 
-void gen_add(char **code, int rd, int rs1, int rs2) {
-    gen_ins(code, 0x1, rd, rs1, rs2);
-}
-
-void gen_addi(char **code, int rd, int rs, int immd) {
-    gen_ins(code, 0x2, rd, rs, immd);
-}
-
-void gen_sub(char **code, int rd, int rs1, int rs2) {
-    gen_ins(code, 0x11, rd, rs1, rs2);
-}
-
-void gen_mul(char **code, int rd, int rs1, int rs2) {
-    gen_ins(code, 0x21, rd, rs1, rs2);
-}
-
-void gen_div(char **code, int rd, int rs1, int rs2) {
-    gen_ins(code, 0x31, rd, rs1, rs2);
-}
-
 void gen_mod(char **code, int rd, int rs1, int rs2) {
     gen_ins(code, 0x33, rd, rs1, rs2);
 }
@@ -123,10 +146,6 @@ void gen_bl(char **code, int rd) {
 
 void gen_nop(char **code) {
     gen_ins(code, 0x0, 0, 0, 0);
-}
-
-void gen_slli(char **code, int rd, int rs1, int immd) {
-    gen_ins(code, 0x72, rd, rs1, immd);
 }
 
 void gen_sprr(char **code, int rd) {
@@ -164,13 +183,13 @@ int main(int argc, char **argv) {
     char code_file[128];
     char data_file[128];
     char addr_file[128];
-    int64_t *code, *data, *base_addr;
-    int sp, bp, pc, a, r;
+    int64_t *code, *base_addr;
     // target address
-    int code_base, data_base;
+    int code_base;
     char *target_code;
     char *cur_ins;
     int code_mem_size;
+    int data_mem_size;
     // Map c4 instruction adress to target code address
     int *address_map;
     // jump(JMP, BZ...) instruction maybe jump to a target which address is larger than itself,
@@ -200,16 +219,20 @@ int main(int argc, char **argv) {
     if (code == NULL) {
         return -1;
     }
-    data = read_file(data_file, base_addr[3]);
+    // Need more data size
+    data_mem_size = 128 * 1024;
+    data = read_file(data_file, data_mem_size);
     if (data == NULL) {
         return -1;
     }
+    cur_data_index = base_addr[3] / sizeof(int64_t);
 
     sp = 7;
     bp = 6;
     pc = 8;
     a = 4;
     r = 5;
+    t = 3;
 
     reloc_index = 0;
 
@@ -459,7 +482,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     write(fd, target_code, code_mem_size);
-    write(fd, data, base_addr[3]);
+    write(fd, data, data_mem_size);
     close(fd);
 
     return 0;
