@@ -7,8 +7,7 @@ int *pa;
 
 void putchar(char c) {
     char *p;
-    p = 0x800;
-    p = p * 256;
+    p = 0x80000;
     *p = c;
 }
 
