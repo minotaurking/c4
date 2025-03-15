@@ -139,12 +139,32 @@ void test_large_number() {
     ASSERT(b == 32768);
 }
 
+void test_negtive_number() {
+    int a;
+    int b;
+
+    a = -257;
+    b = a + 257;
+    ASSERT(b == 0);
+}
+
+void test_large_negtive_number() {
+    int a;
+    int b;
+
+    a = -32768;
+    b = a + 32768;
+    ASSERT(b == 0);
+}
+
 int main() {
     failed_case = 0;
     test_global();
     test_local();
     test_func_global();
     test_large_number();
+    test_negtive_number();
+    test_large_negtive_number();
 
     print1("failed_case: %d\n", failed_case);
     return 0;

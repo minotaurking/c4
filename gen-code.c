@@ -66,7 +66,7 @@ void gen_mov(char **code, int rd, int rs) {
 void gen_movi(char **code, int rd, int immd) {
     int limit = 32768;
     int cur_data_addr = 0;
-    if (immd >= limit) {
+    if (immd >= limit || immd <= -limit) {
         data[cur_data_index] = immd;
         cur_data_addr = data_base + cur_data_index * sizeof(int64_t);
         cur_data_index++;
@@ -74,6 +74,14 @@ void gen_movi(char **code, int rd, int immd) {
         gen_slli(code, rd, rd, 15);
         gen_movi(code, t, cur_data_addr % limit);
         gen_ld32(code, rd, rd, t);
+    } else if (immd < 0) {
+        // For example, immd = -257(0xFEFF in 16 bit)
+        // As mod rule in c language
+        // -257 / 256 = -1 (0xFF in 8 bit)
+        // -257 % 256 = -1 (0xFF in 8 bit)
+        // So in binary of MOVI instruction, we got a immd 0xFFFF, which is -1 not -257
+        // We should minus 1 to -257 / 256, that is what we want
+        gen_ins(code, 0x62, rd, immd % 256, immd / 256 - 1);
     } else {
         gen_ins(code, 0x62, rd, immd % 256, immd / 256);
     }
