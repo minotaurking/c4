@@ -11,7 +11,9 @@ GEN-CODE = ./gen-code
 all: $(TARGET)
 
 ifndef DIR
-$(error Speicify a subfolder, like make DIR=test or make clean DIR=test)
+$(warning Speicify a subfolder, like make DIR=test or make clean DIR=test)
+$(warning Now set DIR to test)
+DIR = test
 endif
 
 include $(DIR)/Makefile
@@ -23,6 +25,12 @@ $(TARGET): $(SOURCES) $(PREPROCESSOR) $(C4) $(GEN-CODE)
 	./c4 -s $(PREPROCESS_FILE)
 	./gen-code $(PREPROCESS_FILE)
 	cp $(TARGET) ~/git_work/qemu/new-calc-build
+
+$(C4): c4.c
+	gcc -g -o $@ $<
+
+$(GEN-CODE): gen-code.c
+	gcc -g -o $@ $<
 
 clean:
 	rm -f $(TARGET)
