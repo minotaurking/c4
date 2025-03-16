@@ -107,6 +107,10 @@ void gen_pop(char **code, int rd) {
     gen_ins(code, 0xa2, rd, 0, 0);
 }
 
+void gen_and(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0xc1, rd, rs1, rs2);
+}
+
 void gen_eq(char **code, int rd, int rs) {
     gen_ins(code, 0xb1, rd, rs, 0);
 }
@@ -129,6 +133,10 @@ void gen_le(char **code, int rd, int rs) {
 
 void gen_ge(char **code, int rd, int rs) {
     gen_ins(code, 0xb9, rd, rs, 0);
+}
+
+void gen_srl(char **code, int rd, int rs1, int rs2) {
+    gen_ins(code, 0x81, rd, rs1, rs2);
 }
 
 void gen_mod(char **code, int rd, int rs1, int rs2) {
@@ -376,7 +384,9 @@ int main(int argc, char **argv) {
                 unimplemented(code[i]);
                 break;
             case AND:
-                unimplemented(code[i]);
+                // a = *sp++ & a
+                gen_pop(&cur_ins, r);
+                gen_and(&cur_ins, a, r, a);
                 break;
             case EQ:
                 // a = *sp++ == a
@@ -418,7 +428,9 @@ int main(int argc, char **argv) {
                 unimplemented(code[i]);
                 break;
             case SHR:
-                unimplemented(code[i]);
+                // a = *sp++ >> a
+                gen_pop(&cur_ins, r);
+                gen_srl(&cur_ins, a, r, a);
                 break;
             case ADD:
                 // a = *sp++ + a

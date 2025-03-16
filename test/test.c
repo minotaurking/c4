@@ -15,7 +15,7 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
     int *p;
     char t9, t8, t7, t6, t5, t4, t3, t2, t1, t0;
     char *t, *te;
-    int d;
+    int tmp, digit;
     char *cp;
     p = &p1;
 
@@ -27,7 +27,9 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
             if (*s == 'c') {
                 putchar(*p);
             } else if (*s == 'd') {
-                if (*p == -2147483648) {
+                if (*p == 0) {
+                    putchar('0');
+                } else if (*p == -2147483648) {
                     putchar('-');
                     putchar('2');
                     putchar('1');
@@ -49,6 +51,25 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
                     while (*p > 0) {
                         *t-- = (*p % 10) + '0';
                         *p = *p / 10;
+                    }
+                    while (t <= te) {
+                        putchar(*t++);
+                    }
+                }
+            } else if (*s == 'x') {
+                if (*p == 0) {
+                    putchar('0');
+                } else {
+                    te = &t9;
+                    t = &t9;
+                    tmp = *p;
+                    while (tmp != 0) {
+                        digit = tmp & 15;
+                        if (digit < 0) {
+                            digit = digit + 16;
+                        }
+                        *t-- = (digit < 10 ? digit + '0' : digit - 10 + 'a');
+                        tmp = tmp >> 4;
                     }
                     while (t <= te) {
                         putchar(*t++);
@@ -170,7 +191,6 @@ void test_large_negtive_number() {
 }
 
 int main() {
-    int a;
     failed_case = 0;
     test_global();
     test_local();
