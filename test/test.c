@@ -13,7 +13,8 @@ void putchar(char c) {
 
 void print4(char *s, int p1, int p2, int p3, int p4) {
     int *p;
-    int t;
+    char t9, t8, t7, t6, t5, t4, t3, t2, t1, t0;
+    char *t, *te;
     int d;
     char *cp;
     p = &p1;
@@ -26,24 +27,35 @@ void print4(char *s, int p1, int p2, int p3, int p4) {
             if (*s == 'c') {
                 putchar(*p);
             } else if (*s == 'd') {
-                if (*p < 0) {
+                if (*p == -2147483648) {
                     putchar('-');
-                    *p = -(*p);
-                }
-                t = 0;
-                while (*p > 0) {
-                    t = t * 10 + (*p % 10);
-                    *p = *p / 10;
-                }
-                if (t == 0) {
-                    putchar('0');
+                    putchar('2');
+                    putchar('1');
+                    putchar('4');
+                    putchar('7');
+                    putchar('4');
+                    putchar('7');
+                    putchar('3');
+                    putchar('6');
+                    putchar('4');
+                    putchar('8');
                 } else {
-                    while (t > 0) {
-                        putchar(t % 10 + '0');
-                        t = t / 10;
+                    if (*p < 0) {
+                        putchar('-');
+                        *p = -(*p);
+                    }
+                    te = &t9;
+                    t = &t9;
+                    while (*p > 0) {
+                        *t-- = (*p % 10) + '0';
+                        *p = *p / 10;
+                    }
+                    while (t <= te) {
+                        putchar(*t++);
                     }
                 }
-            } else if (*s == 's') {
+            }
+            else if (*s == 's') {
                 cp = *p;
                 while (*cp != 0) {
                     putchar(*cp);
@@ -158,6 +170,7 @@ void test_large_negtive_number() {
 }
 
 int main() {
+    int a;
     failed_case = 0;
     test_global();
     test_local();
