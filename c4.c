@@ -167,8 +167,18 @@ void expr(int lev)
     else {
       if (d[Class] == Loc) { *++e = LEA; *++e = loc - d[Val]; }
       else if (d[Class] == Glo) { *++e = IMM; *++e = d[Val]; }
+      else if (d[Class] == Fun) {
+        *++e = IMM; *++e = d[Val];
+      }
       else { printf("%d: undefined variable\n", line); exit(-1); }
-      *++e = ((ty = d[Type]) == CHAR) ? LC : LI;
+      if (d[Class] != Fun) {
+        // This must be some code like below to assign a function address to a variable:
+        // void f() { ... }
+        // int a;
+        // a = f;
+        // So d[Val] is already the address of the function, we don't need a LC or LI.
+        *++e = ((ty = d[Type]) == CHAR) ? LC : LI;
+      }
     }
   }
   else if (tk == '(') {

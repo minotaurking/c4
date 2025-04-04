@@ -261,13 +261,10 @@ int main(int argc, char **argv) {
     address_map = malloc(base_addr[2]);
 
     // Reset handler, jump to 0xc
-    gen_bi(&cur_ins, 0xc);
-    // Vectors, nop now
-    gen_nop(&cur_ins);
-    gen_nop(&cur_ins);
+    gen_bi(&cur_ins, 0x30);
+    cur_ins = target_code + 0x30;
     // Set sp and bp
-    gen_movi(&cur_ins, sp, 0x800);
-    gen_slli(&cur_ins, sp, sp, 8);
+    gen_movi(&cur_ins, sp, 0x00100000);
     gen_mov(&cur_ins, bp, sp);
     // Jump to entry point, but the target_entry is unknown, will be updated later
     // jmp_entry_ins = cur_ins;
@@ -276,8 +273,7 @@ int main(int argc, char **argv) {
     gen_movi(&cur_ins, r, 0);
     gen_bl(&cur_ins, r);
     // Save uart address to a
-    gen_movi(&cur_ins, a, 0x800);
-    gen_slli(&cur_ins, a, a, 8);
+    gen_movi(&cur_ins, a, 0x20000000);
     // Output end
     gen_movi(&cur_ins, r, 'e');
     gen_st32i(&cur_ins, r, a, 0);
@@ -303,6 +299,9 @@ int main(int argc, char **argv) {
                 ++i;
                 if (code[i] >= base_addr[1] && code[i] < base_addr[1] + base_addr[3]) {
                     code[i] = code[i] - base_addr[1] + (int)data_base;
+                } else if (code[i] >= base_addr[0] && code[i] < base_addr[0] + base_addr[2]) {
+                    // This is to get a function address, and the function is defined before
+                    code[i] = address_map[(code[i] - base_addr[0]) / sizeof(int64_t)];
                 }
                 gen_movi(&cur_ins, a, code[i]);
                 break;
