@@ -7,7 +7,7 @@ int *pa;
 
 void putchar(char c) {
     char *p;
-    p = 0x80000;
+    p = 0x20000000;
     *p = c;
 }
 
@@ -118,6 +118,70 @@ void assert(char *file, int line, char *expr, int cond) {
     }
 }
 
+void unimplemented_handler() {
+    print0("unimplemented handler\n");
+    while (1);
+}
+
+void abort_handler() {
+    print0("abort occurred\n");
+    while (1);
+}
+
+void init() {
+    int addr;
+    int *vector;
+
+    addr = 4;
+    vector = (int*)addr;
+    // undefined instruction
+    *vector = unimplemented_handler;
+    // abort
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = abort_handler;
+    // Division by zero
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // Reserved exception
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 0
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 1
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 2
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 3
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 4
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 5
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 6
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+    // interrupt 7
+    addr = addr + 4;
+    vector = (int*)addr;
+    *vector = unimplemented_handler;
+}
+
 // Test global variable access
 void test_global() {
     ia = 10;
@@ -190,7 +254,14 @@ void test_large_negtive_number() {
     ASSERT(b == 0);
 }
 
+void test_abort() {
+    char *p;
+    p = 0x80000000;
+    *p = 1;
+}
+
 int main() {
+    init();
     failed_case = 0;
     test_global();
     test_local();
@@ -198,6 +269,7 @@ int main() {
     test_large_number();
     test_negtive_number();
     test_large_negtive_number();
+    // test_abort();
 
     print1("failed_case: %d\n", failed_case);
     return 0;
