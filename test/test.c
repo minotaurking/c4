@@ -124,7 +124,15 @@ void unimplemented_handler() {
 }
 
 void abort_handler() {
-    print0("abort occurred\n");
+    int *p;
+    int addr, type, pc;
+    p = 0x20001000;
+    addr = *p;
+    p = 0x20001004;
+    type = *p;
+    p = 0x20001008;
+    pc = *p;
+    print3("abort: 0x%x, type 0x%x, pc 0x%x\n", addr, type, pc);
     while (1);
 }
 
@@ -255,9 +263,9 @@ void test_large_negtive_number() {
 }
 
 void test_abort() {
-    char *p;
-    p = 0x80000000;
-    *p = 1;
+    int *p;
+    p = 0x8000000;
+    *p = 97;
 }
 
 int main() {
@@ -269,7 +277,7 @@ int main() {
     test_large_number();
     test_negtive_number();
     test_large_negtive_number();
-    // test_abort();
+    test_abort();
 
     print1("failed_case: %d\n", failed_case);
     return 0;
